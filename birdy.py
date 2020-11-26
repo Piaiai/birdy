@@ -14,8 +14,8 @@ class MyModelEndpointServicer(ModelEndpointServicer):
     def RecognizeBirdByPhoto(self, request, context):
         print('Initializing bird recognition by image')
         # print(request.data)
-        image = load_img(request.data, target_size(112, 112))
-        return dima_pb2.RecognizeBirdResponse(name=f"{predict_class(image)}")
+        image = load_img(request.data, target_size=(112, 112))
+        return dima_pb2.RecognizeBirdResponse(name=f"{self.predict_class(image)}")
 
 
     def predict_class(self, image):
