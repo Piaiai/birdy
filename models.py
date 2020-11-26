@@ -1,17 +1,17 @@
 import os
 import numpy as np 
-import matplotlib.pyplot as plt
 
-from keras.layers import Input, Dense, Conv2D, Dropout
-from keras.layers import Flatten, BatchNormalization
-from keras.layers import MaxPooling2D, AveragePooling2D
-from keras.layers import concatenate, Activation
-from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.callbacks import ReduceLROnPlateau
-from keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
-from keras.utils import plot_model, to_categorical
-from keras.models import Model
+import tensorflow as tf 
+from tf.keras.layers import Input, Dense, Conv2D, Dropout
+from tf.keras.layers import Flatten, BatchNormalization
+from tf.keras.layers import MaxPooling2D, AveragePooling2D
+from tf.keras.layers import concatenate, Activation
+from tf.keras.optimizers import Adam
+from tf.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tf.keras.callbacks import ReduceLROnPlateau
+from tf.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+from tf.keras.utils import plot_model, to_categorical
+from tf.keras.models import Model
 
 
 NUM_CLASSES = 225 
