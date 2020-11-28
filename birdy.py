@@ -3,7 +3,9 @@ from dima_pb2_grpc import *
 from dima_pb2 import *
 from concurrent import futures 
 from models import image_model
-from keras.preprocessing.image import load_img
+from models import bird_dict
+import cv2
+import numpy as np 
 
 class MyModelEndpointServicer(ModelEndpointServicer):
     def __init__(self, image_model, sound_model):
@@ -14,12 +16,14 @@ class MyModelEndpointServicer(ModelEndpointServicer):
     def RecognizeBirdByPhoto(self, request, context):
         print('Initializing bird recognition by image')
         # print(request.data)
-        image = load_img(request.data, target_size=(112, 112))
-        return dima_pb2.RecognizeBirdResponse(name=f"{self.predict_class(image)}")
+        image = cv2.imread(request.data)
+        return dima_pb2.RecognizeBirdResponse(name=f"{bird_dict[self.predict_class(image)]}")
 
 
     def predict_class(self, image):
-        return self.image_model.predict(image)
+        image = cv2.resize(image, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
+        image = np.expand_dims(image.astype('float32') / 255, axis=0)
+        return np.argmax(self.image_model.predict(image))
 
     def is_bird_from_dataset(self, image):
         pass
