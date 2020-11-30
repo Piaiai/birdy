@@ -1,7 +1,10 @@
 import os
 import numpy as np 
 
-import tensorflow as tf 
+import tensorflow as tf
+import tensorflow.keras.backend as K 
+import tensorflow.layers as L 
+import tensorfkiw_io as tfio  
 from tensorflow.keras.layers import Input, Dense, Conv2D, Dropout
 from tensorflow.keras.layers import Flatten, BatchNormalization
 from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D
@@ -12,6 +15,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
 from tensorflow.keras.utils import plot_model, to_categorical
 from tensorflow.keras.models import Model
+
 
 
 NUM_CLASSES = 225 
@@ -73,6 +77,35 @@ image_model = create_densenet_bc(IMG_SHAPE, NUM_CLASSES, DENSE_BLOCKS_NUM,
                            DEPTH, GROWTH_RATE, COMPRESSION_FACTOR)
 
 image_model.load_weights("image_model.hdf5")
+
+base_model = ResNet50(include_top=False, weights=None)
+x = base_model.output
+x = tf.reduce_mean(x, axis=2)
+x1 = L.MaxPooling1D(pool_size=3, strides=1, padding='same')(x)
+x2 = L.AveragePooling1D(pool_size=3, strides=1, padding='same')(x)
+x = x1 + x2 
+x = L.Dropout(0.5)(x)
+x = L.Dense(1024, activation='relu')(x)
+x = L.Dropout(0.5)(x)
+
+norm_att = L.Conv1D(filters=NUM_CLASSES, kernel_size=1, padding='same')(x)
+norm_att = tf.keras.activations.tanh(norm_att/10)*10
+norm_att = tf.keras.activations.softmax(norm_att, axis=-2)
+segmentwise_output = L.Conv1D(filters=NUM_CLASSES, kernel_size=1, padding='same', activation='sigmoid', name='segmentwise_output')(x)
+clipwise_output = tf.math.reduce_sum(norm_att * segmentwise_output, axis=1)
+clipwise_output = L.Lambda(lambda x: x, name="clipwise_output")(clipwise_output)
+output = [segmentwise_output, clipwise_output]
+
+model = tf.keras.models.Model(inputs=base_model.input, outputs=output)
+optimizer= tfa.optimizers.RectifiedAdam(
+    lr=1e-3,
+    total_steps=10000,
+    warmup_proportion=0.1,
+    min_lr=1e-8,
+)
+
+model.compile(optimizer, loss=[None, "binary_crossentropy"],loss_weights=[0,1], metrics=[[],["accuracy", F1,true_positives,possible_positives,predicted_positives]])
+model.load_weights('sound_model.h5')
 
 bird_dict = {0: 'AFRICAN FIREFINCH', 1: 'ALBATROSS', 2: 'ALEXANDRINE PARAKEET', 3: 'AMERICAN AVOCET', 4: 'AMERICAN BITTERN', 5: 'AMERICAN COOT',
              6: 'AMERICAN GOLDFINCH', 7: 'AMERICAN KESTREL', 8: 'AMERICAN PIPIT', 9: 'AMERICAN REDSTART', 10: 'ANHINGA', 11: 'ANNAS HUMMINGBIRD',
@@ -287,3 +320,4 @@ bird_dict = {0: 'AFRICAN FIREFINCH', 1: 'ALBATROSS', 2: 'ALEXANDRINE PARAKEET', 
  222: 'WOOD DUCK',
  223: 'YELLOW CACIQUE',
  224: 'YELLOW HEADED BLACKBIRD'}
+
