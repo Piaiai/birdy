@@ -1,11 +1,15 @@
+import cv2
+import librosa 
 import dima_pb2
+import numpy as np
+
 from dima_pb2_grpc import *
 from dima_pb2 import *
 from concurrent import futures 
-from models import image_model
+from models import image_model, sound_model
 from models import bird_dict
-import cv2
-import numpy as np 
+from models import prediction_for_clip
+
 
 class MyModelEndpointServicer(ModelEndpointServicer):
     def __init__(self, image_model, sound_model):
@@ -28,10 +32,11 @@ class MyModelEndpointServicer(ModelEndpointServicer):
     def is_bird_from_dataset(self, image):
         pass
 
-    def RecognizeBirdBySound(self, request, context):
+    def RecognizeBirdBySound(self, request, context, SAMPLE_RATE=32000):
         print('Initializing bird recognition by sound')
-        print(request.data)
-        return dima_pb2.RecognizeBirdResponse(name='Pizda')
+        sound, _ = librosa.load(request.data, sr=SAMPLE_RATE, mono=True, res_type="kaiser_fast")
+        response = prediction_for_clip(clip=sound, model=self.sound_model)
+        return dima_pb2.RecognizeBirdResponse(response)
 
 
 
