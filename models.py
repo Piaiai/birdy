@@ -96,7 +96,7 @@ clipwise_output = tf.math.reduce_sum(norm_att * segmentwise_output, axis=1)
 clipwise_output = L.Lambda(lambda x: x, name="clipwise_output")(clipwise_output)
 output = [segmentwise_output, clipwise_output]
 
-model = tf.keras.models.Model(inputs=base_model.input, outputs=output)
+sound_model = Model(inputs=base_model.input, outputs=output)
 optimizer= tfa.optimizers.RectifiedAdam(
     lr=1e-3,
     total_steps=10000,
@@ -104,8 +104,40 @@ optimizer= tfa.optimizers.RectifiedAdam(
     min_lr=1e-8,
 )
 
-model.compile(optimizer, loss=[None, "binary_crossentropy"],loss_weights=[0,1], metrics=[[],["accuracy", F1,true_positives,possible_positives,predicted_positives]])
-model.load_weights('sound_model.h5')
+sound_model.compile(optimizer, loss=[None, "binary_crossentropy"],loss_weights=[0,1], metrics=[[],["accuracy", F1,true_positives,possible_positives,predicted_positives]])
+sound_model.load_weights('sound_model.h5')
+
+def audio_to_mel_spectrogram(audio):
+    spectrogram = tfio.experimental.audio.spectrogram(audio, nfft=2048, window=2048, stride=320)
+    mel_spectrogram = tfio.experimental.audio.melscale(spectrogram, rate=SAMPLE_RATE, mels=500, fmin=50, fmax=14000)
+    dbscale_mel_spectrogram = tfio.experimental.audio.dbscale(mel_spectrogram, top_db=80)
+    return dbscale_mel_spectrogram
+
+def mono_to_color(audio, eps=1e-6, img_size=224):
+    X = audio
+    X = tf.stack([X, X, X], axis=-1)
+
+    mean = tf.math.reduce_mean(X)
+    X = X - mean
+    std = tf.math.reduce_std(X)
+    Xstd = X / (std + eps)
+    _min, _max = tf.math.reduce_min(Xstd), tf.math.reduce_max(Xstd)
+    norm_max = _max
+    norm_min = _min
+    if (_max - _min) > eps:
+        V = Xstd
+        V = 255 * (V - norm_min) / (norm_max - norm_min)
+    else:
+        V = tf.zeros_like(Xstd)
+
+    image = tf.image.resize(V, (img_size,img_size))
+    return preprocess_input(image)
+
+def upsample(x, ratio=72):
+    (time_steps, classes_num) = x.shape
+    upsampled = np.repeat(x, ratio, axis=0)
+    upsampled = upsampled[2:-2]
+    return upsampled
 
 bird_dict = {0: 'AFRICAN FIREFINCH', 1: 'ALBATROSS', 2: 'ALEXANDRINE PARAKEET', 3: 'AMERICAN AVOCET', 4: 'AMERICAN BITTERN', 5: 'AMERICAN COOT',
              6: 'AMERICAN GOLDFINCH', 7: 'AMERICAN KESTREL', 8: 'AMERICAN PIPIT', 9: 'AMERICAN REDSTART', 10: 'ANHINGA', 11: 'ANNAS HUMMINGBIRD',
