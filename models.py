@@ -1,10 +1,13 @@
 import os
 import numpy as np 
+import librosa
 
 import tensorflow as tf
 import tensorflow.keras.backend as K 
-import tensorflow.layers as L 
-import tensorfkiw_io as tfio  
+import tensorflow.keras.layers as L 
+import tensorflow_io as tfio
+import tensorflow_addons as tfa
+from keras.applications.resnet50 import preprocess_input, decode_predictions
 from tensorflow.keras.layers import Input, Dense, Conv2D, Dropout
 from tensorflow.keras.layers import Flatten, BatchNormalization
 from tensorflow.keras.layers import MaxPooling2D, AveragePooling2D
@@ -15,6 +18,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
 from tensorflow.keras.utils import plot_model, to_categorical
 from tensorflow.keras.models import Model
+from tensorflow.keras.applications.resnet50 import ResNet50
 
 
 
@@ -78,6 +82,85 @@ image_model = create_densenet_bc(IMG_SHAPE, NUM_CLASSES, DENSE_BLOCKS_NUM,
 
 image_model.load_weights("image_model.hdf5")
 
+
+def true_positives(y_true, y_pred):
+    return K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+
+def possible_positives(y_true, y_pred):
+    return K.sum(K.round(K.clip(y_true, 0, 1)))
+
+def predicted_positives(y_true, y_pred):
+    return K.sum(K.round(K.clip(y_pred, 0, 1)))
+
+def F1(y_true, y_pred):
+    TPFN = possible_positives(y_true, y_pred)
+    TPFP = predicted_positives(y_true, y_pred)
+    TP = true_positives(y_true, y_pred)
+    return  (TP * 2) / (TPFN + TPFP + K.epsilon())
+
+BIRD_CODE = {
+    'aldfly': 0, 'ameavo': 1, 'amebit': 2, 'amecro': 3, 'amegfi': 4,
+    'amekes': 5, 'amepip': 6, 'amered': 7, 'amerob': 8, 'amewig': 9,
+    'amewoo': 10, 'amtspa': 11, 'annhum': 12, 'astfly': 13, 'baisan': 14,
+    'baleag': 15, 'balori': 16, 'banswa': 17, 'barswa': 18, 'bawwar': 19,
+    'belkin1': 20, 'belspa2': 21, 'bewwre': 22, 'bkbcuc': 23, 'bkbmag1': 24,
+    'bkbwar': 25, 'bkcchi': 26, 'bkchum': 27, 'bkhgro': 28, 'bkpwar': 29,
+    'bktspa': 30, 'blkpho': 31, 'blugrb1': 32, 'blujay': 33, 'bnhcow': 34,
+    'boboli': 35, 'bongul': 36, 'brdowl': 37, 'brebla': 38, 'brespa': 39,
+    'brncre': 40, 'brnthr': 41, 'brthum': 42, 'brwhaw': 43, 'btbwar': 44,
+    'btnwar': 45, 'btywar': 46, 'buffle': 47, 'buggna': 48, 'buhvir': 49,
+    'bulori': 50, 'bushti': 51, 'buwtea': 52, 'buwwar': 53, 'cacwre': 54,
+    'calgul': 55, 'calqua': 56, 'camwar': 57, 'cangoo': 58, 'canwar': 59,
+    'canwre': 60, 'carwre': 61, 'casfin': 62, 'caster1': 63, 'casvir': 64,
+    'cedwax': 65, 'chispa': 66, 'chiswi': 67, 'chswar': 68, 'chukar': 69,
+    'clanut': 70, 'cliswa': 71, 'comgol': 72, 'comgra': 73, 'comloo': 74,
+    'commer': 75, 'comnig': 76, 'comrav': 77, 'comred': 78, 'comter': 79,
+    'comyel': 80, 'coohaw': 81, 'coshum': 82, 'cowscj1': 83, 'daejun': 84,
+    'doccor': 85, 'dowwoo': 86, 'dusfly': 87, 'eargre': 88, 'easblu': 89,
+    'easkin': 90, 'easmea': 91, 'easpho': 92, 'eastow': 93, 'eawpew': 94,
+    'eucdov': 95, 'eursta': 96, 'evegro': 97, 'fiespa': 98, 'fiscro': 99,
+    'foxspa': 100, 'gadwal': 101, 'gcrfin': 102, 'gnttow': 103, 'gnwtea': 104,
+    'gockin': 105, 'gocspa': 106, 'goleag': 107, 'grbher3': 108, 'grcfly': 109,
+    'greegr': 110, 'greroa': 111, 'greyel': 112, 'grhowl': 113, 'grnher': 114,
+    'grtgra': 115, 'grycat': 116, 'gryfly': 117, 'haiwoo': 118, 'hamfly': 119,
+    'hergul': 120, 'herthr': 121, 'hoomer': 122, 'hoowar': 123, 'horgre': 124,
+    'horlar': 125, 'houfin': 126, 'houspa': 127, 'houwre': 128, 'indbun': 129,
+    'juntit1': 130, 'killde': 131, 'labwoo': 132, 'larspa': 133, 'lazbun': 134,
+    'leabit': 135, 'leafly': 136, 'leasan': 137, 'lecthr': 138, 'lesgol': 139,
+    'lesnig': 140, 'lesyel': 141, 'lewwoo': 142, 'linspa': 143, 'lobcur': 144,
+    'lobdow': 145, 'logshr': 146, 'lotduc': 147, 'louwat': 148, 'macwar': 149,
+    'magwar': 150, 'mallar3': 151, 'marwre': 152, 'merlin': 153, 'moublu': 154,
+    'mouchi': 155, 'moudov': 156, 'norcar': 157, 'norfli': 158, 'norhar2': 159,
+    'normoc': 160, 'norpar': 161, 'norpin': 162, 'norsho': 163, 'norwat': 164,
+    'nrwswa': 165, 'nutwoo': 166, 'olsfly': 167, 'orcwar': 168, 'osprey': 169,
+    'ovenbi1': 170, 'palwar': 171, 'pasfly': 172, 'pecsan': 173, 'perfal': 174,
+    'phaino': 175, 'pibgre': 176, 'pilwoo': 177, 'pingro': 178, 'pinjay': 179,
+    'pinsis': 180, 'pinwar': 181, 'plsvir': 182, 'prawar': 183, 'purfin': 184,
+    'pygnut': 185, 'rebmer': 186, 'rebnut': 187, 'rebsap': 188, 'rebwoo': 189,
+    'redcro': 190, 'redhea': 191, 'reevir1': 192, 'renpha': 193, 'reshaw': 194,
+    'rethaw': 195, 'rewbla': 196, 'ribgul': 197, 'rinduc': 198, 'robgro': 199,
+    'rocpig': 200, 'rocwre': 201, 'rthhum': 202, 'ruckin': 203, 'rudduc': 204,
+    'rufgro': 205, 'rufhum': 206, 'rusbla': 207, 'sagspa1': 208, 'sagthr': 209,
+    'savspa': 210, 'saypho': 211, 'scatan': 212, 'scoori': 213, 'semplo': 214,
+    'semsan': 215, 'sheowl': 216, 'shshaw': 217, 'snobun': 218, 'snogoo': 219,
+    'solsan': 220, 'sonspa': 221, 'sora': 222, 'sposan': 223, 'spotow': 224,
+    'stejay': 225, 'swahaw': 226, 'swaspa': 227, 'swathr': 228, 'treswa': 229,
+    'truswa': 230, 'tuftit': 231, 'tunswa': 232, 'veery': 233, 'vesspa': 234,
+    'vigswa': 235, 'warvir': 236, 'wesblu': 237, 'wesgre': 238, 'weskin': 239,
+    'wesmea': 240, 'wessan': 241, 'westan': 242, 'wewpew': 243, 'whbnut': 244,
+    'whcspa': 245, 'whfibi': 246, 'whtspa': 247, 'whtswi': 248, 'wilfly': 249,
+    'wilsni1': 250, 'wiltur': 251, 'winwre3': 252, 'wlswar': 253, 'wooduc': 254,
+    'wooscj2': 255, 'woothr': 256, 'y00475': 257, 'yebfly': 258, 'yebsap': 259,
+    'yehbla': 260, 'yelwar': 261, 'yerwar': 262, 'yetvir': 263
+}
+
+INV_BIRD_CODE = {v: k for k, v in BIRD_CODE.items()}
+
+
+SAMPLE_RATE=32000
+NUM_CLASSES_SOUND = 264
+PERIOD = 5
+
 base_model = ResNet50(include_top=False, weights=None)
 x = base_model.output
 x = tf.reduce_mean(x, axis=2)
@@ -88,10 +171,10 @@ x = L.Dropout(0.5)(x)
 x = L.Dense(1024, activation='relu')(x)
 x = L.Dropout(0.5)(x)
 
-norm_att = L.Conv1D(filters=NUM_CLASSES, kernel_size=1, padding='same')(x)
+norm_att = L.Conv1D(filters=NUM_CLASSES_SOUND, kernel_size=1, padding='same')(x)
 norm_att = tf.keras.activations.tanh(norm_att/10)*10
 norm_att = tf.keras.activations.softmax(norm_att, axis=-2)
-segmentwise_output = L.Conv1D(filters=NUM_CLASSES, kernel_size=1, padding='same', activation='sigmoid', name='segmentwise_output')(x)
+segmentwise_output = L.Conv1D(filters=NUM_CLASSES_SOUND, kernel_size=1, padding='same', activation='sigmoid', name='segmentwise_output')(x)
 clipwise_output = tf.math.reduce_sum(norm_att * segmentwise_output, axis=1)
 clipwise_output = L.Lambda(lambda x: x, name="clipwise_output")(clipwise_output)
 output = [segmentwise_output, clipwise_output]
@@ -138,6 +221,84 @@ def upsample(x, ratio=72):
     upsampled = np.repeat(x, ratio, axis=0)
     upsampled = upsampled[2:-2]
     return upsampled
+
+def prediction_for_clip(clip: np.ndarray, 
+                        model: tf.keras.models.Model,
+                        threshold=0.5, 
+                        PERIOD = 5,
+                        INTERVAL_RATE = 0.5,
+                        OFFSET_LEGNTH = 0.01):
+    audios = []
+    LENGTH_THRESHOLD = 0.1
+    y = clip.astype(np.float32)
+    len_y = len(y)
+    start = 0
+    end = PERIOD * SAMPLE_RATE
+    while True:
+        y_batch = y[start:end].astype(np.float32)
+        if len(y_batch) != PERIOD * SAMPLE_RATE:
+            y_pad = np.zeros(PERIOD * SAMPLE_RATE, dtype=np.float32)
+            y_pad[:len(y_batch)] = y_batch
+            audios.append(y_pad)
+            break
+        start = end - int(PERIOD * (1.0-INTERVAL_RATE) * SAMPLE_RATE)
+        end = start + PERIOD * SAMPLE_RATE
+        audios.append(y_batch)
+        
+    array = np.asarray(audios)
+
+    estimated_event_list = []
+    global_time = 0.0
+
+    for audio in array:
+        melspec = audio_to_mel_spectrogram(audio)
+        image = mono_to_color(melspec)
+        image = tf.expand_dims(image, axis=0)
+
+        framewise_outputs, _ = model.predict(image)
+        framewise_outputs = upsample(framewise_outputs[0])
+        
+        thresholded = framewise_outputs >= threshold
+        for target_idx in range(thresholded.shape[1]):
+            if thresholded[:, target_idx].mean() == 0:
+                pass
+            else:
+                detected = np.argwhere(thresholded[:, target_idx]).reshape(-1)
+                head_idx = 0
+                tail_idx = 0
+                while True:
+                    if (tail_idx + 1 == len(detected)) or (
+                            detected[tail_idx + 1] - 
+                            detected[tail_idx] != 1):
+                                
+                        onset = OFFSET_LEGNTH * detected[head_idx] + global_time
+                        offset = OFFSET_LEGNTH * detected[tail_idx] + global_time
+                        onset_idx = detected[head_idx]
+                        offset_idx = detected[tail_idx]
+                        max_confidence = framewise_outputs[onset_idx:offset_idx, target_idx].max()
+                        mean_confidence = framewise_outputs[onset_idx:offset_idx, target_idx].mean()
+                                                    
+                        estimated_event = {
+                            "ebird_code": INV_BIRD_CODE[target_idx],
+                            "onset": onset,
+                            "offset": offset,
+                            "max_confidence": max_confidence,
+                            "mean_confidence": mean_confidence
+                        }
+                        if offset-onset > LENGTH_THRESHOLD or max_confidence > threshold * 1.5:
+                            estimated_event_list.append(estimated_event)
+                        else:
+                            None
+                        head_idx = tail_idx + 1
+                        tail_idx = tail_idx + 1
+                        if head_idx >= len(detected):
+                            break
+                    else:
+                        tail_idx += 1
+        global_time += PERIOD*INTERVAL_RATE
+        
+    prediction_df = pd.DataFrame(estimated_event_list)
+    return prediction_df['ebird_code'].value_counts().index[0]
 
 bird_dict = {0: 'AFRICAN FIREFINCH', 1: 'ALBATROSS', 2: 'ALEXANDRINE PARAKEET', 3: 'AMERICAN AVOCET', 4: 'AMERICAN BITTERN', 5: 'AMERICAN COOT',
              6: 'AMERICAN GOLDFINCH', 7: 'AMERICAN KESTREL', 8: 'AMERICAN PIPIT', 9: 'AMERICAN REDSTART', 10: 'ANHINGA', 11: 'ANNAS HUMMINGBIRD',
