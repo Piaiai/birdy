@@ -43,7 +43,7 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_ModelEndpointServicer_to_server(
-        MyModelEndpointServicer(image_model, image_model), server)
+        MyModelEndpointServicer(image_model, sound_model), server)
     server.add_insecure_port('0.0.0.0:1488')
     server.start()
     server.wait_for_termination()
