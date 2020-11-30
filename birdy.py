@@ -19,8 +19,12 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 
     def RecognizeBirdByPhoto(self, request, context):
         print('Initializing bird recognition by image')
-        # print(request.data)
-        image = cv2.imread(request.data)
+        #print(request.data)
+        file = open("bird.jpg", "wb")
+        file.write(request.data)
+        file.close()
+        image = cv2.imread('bird.jpg')
+        print("hi")
         return dima_pb2.RecognizeBirdResponse(name=f"{bird_dict[self.predict_class(image)]}")
 
 
@@ -34,7 +38,10 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 
     def RecognizeBirdBySound(self, request, context, SAMPLE_RATE=32000):
         print('Initializing bird recognition by sound')
-        sound, _ = librosa.load(request.data, sr=SAMPLE_RATE, mono=True, res_type="kaiser_fast")
+        file = open("bird.mp3", "wb")
+        file.write(request.data)
+        file.close()
+        sound, _ = librosa.load('bird.mp3', sr=SAMPLE_RATE, mono=True, res_type="kaiser_fast")
         response = prediction_for_clip(clip=sound, model=self.sound_model)
         return dima_pb2.RecognizeBirdResponse(response)
 
