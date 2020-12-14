@@ -25,7 +25,7 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 
 
     def predict_class(self, image):
-        image = cv2.resize(image, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(image, dsize=(224, 224), interpolation=cv2.INTER_CUBIC)
         image = np.expand_dims(image.astype('float32') / 255, axis=0)
         return np.argmax(self.image_model.predict(image))
 
@@ -36,7 +36,7 @@ class MyModelEndpointServicer(ModelEndpointServicer):
         print('Initializing bird recognition by sound')
         sound, _ = librosa.load(request.data, sr=SAMPLE_RATE, mono=True, res_type="kaiser_fast")
         response = prediction_for_clip(clip=sound, model=self.sound_model)
-        return dima_pb2.RecognizeBirdResponse(response)
+        return dima_pb2.RecognizeBirdResponse(name=response)
 
 
 
