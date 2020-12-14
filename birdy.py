@@ -6,7 +6,7 @@ import numpy as np
 from dima_pb2_grpc import *
 from dima_pb2 import *
 from concurrent import futures 
-from models import image_model, sound_model
+from models import image_model, sound_model, model_resnet
 from models import bird_dict
 from models import prediction_for_clip
 
@@ -43,7 +43,7 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_ModelEndpointServicer_to_server(
-        MyModelEndpointServicer(image_model, sound_model), server)
+        MyModelEndpointServicer(model_resnet, sound_model), server)
     server.add_insecure_port('0.0.0.0:1488')
     server.start()
     server.wait_for_termination()
