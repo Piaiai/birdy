@@ -20,6 +20,7 @@ from tensorflow.keras.utils import plot_model, to_categorical
 from tensorflow.keras.models import Model
 from tensorflow.keras.applications.resnet50 import ResNet50
 from tensorflow.keras.applications import ResNet101V2
+from tensorflow.keras.models import Sequential
 
 
 convlayer=ResNet101V2(input_shape=(224,224,3),weights='imagenet',include_top=False)
@@ -39,7 +40,7 @@ model_resnet.add(Dropout(0.5))
 model_resnet.add(Dense(230,activation='softmax'))
 opt=tf.keras.optimizers.Adam(lr=0.001)
 model_resnet.compile(loss='sparse_categorical_crossentropy',metrics=['accuracy'],optimizer=opt)
-model_resnet.load_weights('image_model_resnet101.hdf5')
+model_resnet.load_weights('/training_1/cp.ckpt')
 
 NUM_CLASSES = 225 
 IMG_SHAPE = (112, 112, 3)
