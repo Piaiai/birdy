@@ -1,5 +1,6 @@
 import os
 import numpy as np 
+import pandas as pd
 import librosa
 
 import tensorflow as tf
@@ -40,7 +41,7 @@ model_resnet.add(Dropout(0.5))
 model_resnet.add(Dense(230,activation='softmax'))
 opt=tf.keras.optimizers.Adam(lr=0.001)
 model_resnet.compile(loss='sparse_categorical_crossentropy',metrics=['accuracy'],optimizer=opt)
-model_resnet.load_weights('/training_1/cp.ckpt')
+model_resnet.load_weights('./training_1/cp.ckpt')
 
 NUM_CLASSES = 225 
 IMG_SHAPE = (112, 112, 3)
@@ -318,6 +319,7 @@ def prediction_for_clip(clip: np.ndarray,
         global_time += PERIOD*INTERVAL_RATE
         
     prediction_df = pd.DataFrame(estimated_event_list)
+    print(prediction_df)
     return prediction_df['ebird_code'].value_counts().index[0]
 
 bird_dict = {0: 'African crowned crane',
