@@ -320,6 +320,8 @@ def prediction_for_clip(clip: np.ndarray,
         
     prediction_df = pd.DataFrame(estimated_event_list)
     print(prediction_df)
+    if prediction_df.empty:
+        return "Couldn't recognize the bird"
     return prediction_df['ebird_code'].value_counts().index[0]
 
 bird_dict = {0: 'African crowned crane',

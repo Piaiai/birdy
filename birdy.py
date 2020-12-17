@@ -42,16 +42,17 @@ class MyModelEndpointServicer(ModelEndpointServicer):
 
     def RecognizeBirdBySound(self, request, context, SAMPLE_RATE=32000):
         print('Initializing bird recognition by sound')
-        file = open("bird.mp3", "wb")
+        file = open("bird.mp4", "wb")
         file.write(request.data)
         file.close()
-        sound = AudioSegment.from_mp3("bird.mp3")
+        sound = AudioSegment.from_file("bird.mp4", "mp4")
         sound.export("bird.wav", format="wav")
         print("before librosa")
         sound = np.zeros((1,1))
         try:
             sound, sr = librosa.load('bird.wav')
             print(sr)
+            print(sound.shape)
         except RuntimeError as e: 
             print("runtime error")
         else:
@@ -60,7 +61,7 @@ class MyModelEndpointServicer(ModelEndpointServicer):
         finally:
             print("hello.1")
         print("after librosa")
-        response = prediction_for_clip(clip=sound, model=self.sound_model)
+        response = prediction_for_clip(clip=sound, model=self.sound_model, PERIOD=2)
         print(response)
         print("hi")
         print(len(response))
